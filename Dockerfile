@@ -1,6 +1,6 @@
 FROM node:18-alpine
 
-# Install Chromium and dependencies
+# Install Chromium, socat, and dependencies
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    dumb-init
+    dumb-init \
+    socat
 
 # Set environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
