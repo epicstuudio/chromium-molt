@@ -4,13 +4,21 @@ set -e
 echo "Starting Chromium headless with CDP on port 9222..."
 
 # Launch Chromium in headless mode with remote debugging
+# Extra flags to completely disable GPU/Vulkan on Railway
 exec /usr/bin/chromium-browser \
   --headless=new \
   --no-sandbox \
   --disable-setuid-sandbox \
   --disable-dev-shm-usage \
   --disable-gpu \
+  --disable-gpu-compositing \
+  --disable-gpu-rasterization \
+  --disable-gpu-sandbox \
   --disable-software-rasterizer \
+  --disable-vulkan \
+  --disable-features=VizDisplayCompositor \
+  --disable-features=Vulkan \
+  --use-gl=swiftshader-webgl \
   --disable-extensions \
   --disable-background-networking \
   --disable-background-timer-throttling \
