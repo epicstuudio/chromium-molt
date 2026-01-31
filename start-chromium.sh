@@ -10,7 +10,7 @@ sleep 2
 
 echo "Starting Chromium on 127.0.0.1:9223 (internal port)..."
 
-# Start Chromium on port 9223 (different from socat's 9222)
+# Start Chromium on port 9223
 /usr/bin/chromium-browser \
   --headless=new \
   --no-sandbox \
@@ -41,6 +41,7 @@ echo "Starting Chromium on 127.0.0.1:9223 (internal port)..."
   --no-first-run \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port=9223 \
+  --remote-allow-origins=* \
   --user-data-dir=/tmp/chromium-data \
   about:blank > /tmp/chromium.log 2>&1 &
 
