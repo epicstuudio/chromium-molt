@@ -3,16 +3,14 @@ set -e
 
 echo "=== Chromium CDP Service Starting ==="
 
-# Kill any existing Chromium/socat processes (cleanup from previous crashes)
+# Kill any existing processes
 pkill -f chromium-browser || true
 pkill -f socat || true
-
-# Wait for cleanup
 sleep 2
 
-echo "Starting Chromium in background on 127.0.0.1:9222..."
+echo "Starting Chromium on 127.0.0.1:9223 (internal port)..."
 
-# Start Chromium in background
+# Start Chromium on port 9223 (different from socat's 9222)
 /usr/bin/chromium-browser \
   --headless=new \
   --no-sandbox \
@@ -42,44 +40,26 @@ echo "Starting Chromium in background on 127.0.0.1:9222..."
   --mute-audio \
   --no-first-run \
   --remote-debugging-address=127.0.0.1 \
-  --remote-debugging-port=9222 \
+  --remote-debugging-port=9223 \
   --user-data-dir=/tmp/chromium-data \
   about:blank > /tmp/chromium.log 2>&1 &
 
 CHROMIUM_PID=$!
-echo "Chromium started with PID: $CHROMIUM_PID"
+echo "Chromium started with PID: $CHROMIUM_PID on port 9223"
 
-# Wait longer for Chromium to fully initialize
+# Wait for Chromium to initialize
 echo "Waiting for Chromium to be ready..."
 sleep 5
 
-# Check if process is still running
+# Verify process is alive
 if ! kill -0 $CHROMIUM_PID 2>/dev/null; then
   echo "ERROR: Chromium process died"
   cat /tmp/chromium.log
   exit 1
 fi
 
-# Try to connect (but don't fail if HTTP endpoint isn't ready yet)
-for i in $(seq 1 10); do
-  if curl -s http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
-    echo "✓ Chromium HTTP endpoint is ready!"
-    break
-  fi
-  echo "  HTTP endpoint not ready yet... ($i/10)"
-  sleep 1
-done
+echo "✓ Chromium process is running (PID: $CHROMIUM_PID)"
+echo "Starting socat proxy: 0.0.0.0:9222 -> 127.0.0.1:9223"
 
-# Even if HTTP check fails, proceed if Chromium process is alive
-# (HTTP endpoint might just be slow, but WebSocket will work)
-if kill -0 $CHROMIUM_PID 2>/dev/null; then
-  echo "✓ Chromium process is running (PID: $CHROMIUM_PID)"
-  echo "Starting socat proxy: 0.0.0.0:9222 -> 127.0.0.1:9222"
-  
-  # Start socat in foreground (keeps container alive)
-  exec socat TCP-LISTEN:9222,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:9222
-else
-  echo "ERROR: Chromium process died"
-  cat /tmp/chromium.log
-  exit 1
-fi
+# Forward external port 9222 to Chromium's port 9223
+exec socat TCP-LISTEN:9222,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:9223
