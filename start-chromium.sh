@@ -3,9 +3,8 @@ set -e
 
 echo "Starting Chromium headless with CDP on port 9222..."
 
-# Launch Chromium in headless mode with remote debugging
-# Extra flags to completely disable GPU/Vulkan on Railway
-exec /usr/bin/chromium-browser \
+# Start Chromium in background (will listen on 127.0.0.1:9222)
+/usr/bin/chromium-browser \
   --headless=new \
   --no-sandbox \
   --disable-setuid-sandbox \
@@ -16,8 +15,7 @@ exec /usr/bin/chromium-browser \
   --disable-gpu-sandbox \
   --disable-software-rasterizer \
   --disable-vulkan \
-  --disable-features=VizDisplayCompositor \
-  --disable-features=Vulkan \
+  --disable-features=VizDisplayCompositor,Vulkan \
   --use-gl=swiftshader-webgl \
   --disable-extensions \
   --disable-background-networking \
@@ -34,7 +32,15 @@ exec /usr/bin/chromium-browser \
   --metrics-recording-only \
   --mute-audio \
   --no-first-run \
-  --remote-debugging-address=0.0.0.0 \
+  --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port=9222 \
   --user-data-dir=/tmp/chromium-data \
-  about:blank
+  about:blank &
+
+# Wait for Chromium to start
+sleep 3
+
+echo "Starting socat proxy: 0.0.0.0:9222 -> 127.0.0.1:9222"
+
+# Use socat to forward connections from 0.0.0.0:9222 to 127.0.0.1:9222
+exec socat TCP-LISTEN:9222,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:9222
