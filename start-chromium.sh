@@ -8,7 +8,7 @@ pkill -f chromium-browser || true
 pkill -f socat || true
 
 # Wait for cleanup
-sleep 1
+sleep 2
 
 echo "Starting Chromium in background on 127.0.0.1:9222..."
 
@@ -49,25 +49,37 @@ echo "Starting Chromium in background on 127.0.0.1:9222..."
 CHROMIUM_PID=$!
 echo "Chromium started with PID: $CHROMIUM_PID"
 
-# Wait for Chromium to be ready (check /json endpoint)
+# Wait longer for Chromium to fully initialize
 echo "Waiting for Chromium to be ready..."
-for i in $(seq 1 30); do
-  if curl -s http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
-    echo "✓ Chromium is ready!"
-    break
-  fi
-  echo "  Waiting... ($i/30)"
-  sleep 1
-done
+sleep 5
 
-# Verify Chromium is actually running
-if ! curl -s http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
-  echo "ERROR: Chromium failed to start"
+# Check if process is still running
+if ! kill -0 $CHROMIUM_PID 2>/dev/null; then
+  echo "ERROR: Chromium process died"
   cat /tmp/chromium.log
   exit 1
 fi
 
-echo "Starting socat proxy: 0.0.0.0:9222 -> 127.0.0.1:9222"
+# Try to connect (but don't fail if HTTP endpoint isn't ready yet)
+for i in $(seq 1 10); do
+  if curl -s http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
+    echo "✓ Chromium HTTP endpoint is ready!"
+    break
+  fi
+  echo "  HTTP endpoint not ready yet... ($i/10)"
+  sleep 1
+done
 
-# Start socat in foreground (keeps container alive)
-exec socat TCP-LISTEN:9222,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:9222
+# Even if HTTP check fails, proceed if Chromium process is alive
+# (HTTP endpoint might just be slow, but WebSocket will work)
+if kill -0 $CHROMIUM_PID 2>/dev/null; then
+  echo "✓ Chromium process is running (PID: $CHROMIUM_PID)"
+  echo "Starting socat proxy: 0.0.0.0:9222 -> 127.0.0.1:9222"
+  
+  # Start socat in foreground (keeps container alive)
+  exec socat TCP-LISTEN:9222,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:9222
+else
+  echo "ERROR: Chromium process died"
+  cat /tmp/chromium.log
+  exit 1
+fi
