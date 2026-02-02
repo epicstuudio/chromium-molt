@@ -8,9 +8,9 @@ pkill -f chromium-browser || true
 pkill -f nginx || true
 sleep 2
 
-echo "Starting Chromium on 127.0.0.1:9223..."
+echo "Starting Chromium on 0.0.0.0:9223..."
 
-# Start Chromium on localhost:9223
+# Start Chromium on all interfaces so nginx can proxy it
 /usr/bin/chromium-browser \
   --headless=new \
   --no-sandbox \
@@ -19,7 +19,7 @@ echo "Starting Chromium on 127.0.0.1:9223..."
   --disable-gpu \
   --disable-software-rasterizer \
   --disable-extensions \
-  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-address=0.0.0.0 \
   --remote-debugging-port=9223 \
   --remote-allow-origins=* \
   --user-data-dir=/tmp/chromium-data \
